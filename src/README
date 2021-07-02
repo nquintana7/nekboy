@@ -1,0 +1,4 @@
+This is a in development Gameboy (DMG-01) Emulator written in Java, during my free time.
+
+Current status is:
+CPU and Memory Map logic almost done, passes almost all Blarggs CPU Tests.
