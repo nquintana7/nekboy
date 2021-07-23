@@ -1,7 +1,10 @@
 package memory;
 
 import cpu.*;
+import cpu.Timer;
+import graphic.*;
 
+import javax.swing.*;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -12,23 +15,31 @@ public class MMU {
 	private final int oam_offset = 0xFE00;
 	private final int wram_offet = 0xC000;
 	private final int hram_offet = 0xFF80;
-	private final int[] wram, hram, vram, oam, io;
+	public final int[] wram, hram, vram, oam, io;
 	private int[] rom;
 	public int[] boot_rom;
 	private Timer tm;
 	private InterruptsController ic;
-	
-	public MMU(InterruptsController ic, Timer tmer) throws IOException {
-		left_boot = false;
+	private boolean DMA_intransfer;
+	private int DMA_counter;
+	public int pad_state;
+	public boolean action;
+	public Joypad joy;
+
+	public MMU(InterruptsController ic, Timer tmeru, Joypad j) throws IOException {
+		left_boot = true;
 		oam = new int[160];
 		vram = new int[8192];
 		hram = new int[127];
 		wram = new int[8192];
 		io = new int[128];
-		loadROM(9);
+		loadROM();
 		loadBootROM();
 		this.ic = ic;
-		tm = tmer;
+		tm = tmeru;
+		DMA_intransfer = false;
+		pad_state = 0xff;
+		joy = j;
 	}
 	
 	public int getByte (int addr) {
@@ -50,10 +61,14 @@ public class MMU {
 		} else if (addr >= 0xc000 && addr <=0xdfff) {
 				return wram[addr-wram_offet]&0xff;
 		} else if(addr >= 0xfe00 && addr <= 0xfe9f) {
-				return oam[addr-oam_offset]&0xff;
-		} else if(addr>=0xff00 && addr <=0xff7f) {
+			return oam[addr - oam_offset] & 0xff;
+		} else if(addr == 0xff00) {
+			return joy.getByte();
+		} else if(addr>0xff00 && addr <=0xff7f) {
 			if(addr == 0xFF04) {
 				return tm.DIV&0xff;
+			} else if(addr == 0xff0f) {
+				return ic.getIF();
 			} else if(addr == 0xFF05) {
 				return tm.TIMA&0xff;
 			} else if(addr == 0xFF06) {
@@ -75,14 +90,20 @@ public class MMU {
 
 	public void writeByte (int addr, int value) {
 		addr = addr&0xffff;
+		value = value&0xff;
+		if(DMA_intransfer) {
+			if(addr>=0xff80 && addr <= 0xfffe) {
+				hram[addr - hram_offet] = value;
+			}
+			return;
+		}
+		if(addr == 0xff00) {
+			joy.writeByte(value&0xff);
+			return;
+		}
 		if ((addr == 0xFF50) && (value != 0)) { //unmap bios
 			left_boot = true;
 			return;
-		}
-		if (addr == 0xff46 ) {
-			addr = (value<<8)&0xffff;
-			for(int i = 0; i < 0xA0; i++)
-				writeByte(0xFE00 + i, this.getByte(addr+i));
 		}
 		if(addr >= 0 && addr<=0x3fff) {
 		} else if(addr >0x3fff && addr <= 0x7fff) {
@@ -92,10 +113,12 @@ public class MMU {
 		} else if (addr >= 0xc000 && addr <=0xdfff) {
 			wram[addr-wram_offet] = value&0xff;
 		} else if(addr >= 0xfe00 && addr <= 0xfe9f) {
-			oam[addr-oam_offset]=value&0xff;
-		} else if(addr>=0xff00 && addr <=0xff7f) {
+				oam[addr-oam_offset]=value&0xff;
+		} else if(addr>0xff00 && addr <=0xff7f) {
 			if(addr == 0xFF04) {
 				tm.writeToDiv();
+			} else if (addr == 0xff0f) {
+				ic.writeIF(value);
 			} else if(addr == 0xFF05) {
 				tm.writeToTIMA(value&0xff);
 			} else if(addr == 0xFF06) {
@@ -103,21 +126,38 @@ public class MMU {
 			} else if(addr == 0xFF07) {
 				tm.writeToTac(value&0xff);
 			} else if(addr == 0xFF40) {
-				io[addr-0xFF00] = value&0xff;
-			} else {
-				io[addr - 0xFF00] = value & 0xff;
-			}
+				io[addr-0xFF00] = (value&0xff)|1<<7;
+			} else if(addr == 0xff46) {
+				int address = (value<<8)&0xffff; // source address is data * 100
+				for (int i = 0 ; i < 0xA0; i++)
+				{
+					writeByte(0xFE00+i,getByte(address+i)); ;
+				}
+			} else if(addr == 0xff41) {
+				io[addr-0xff00] = (value&0b1111000)&(0xff&io[addr-0xff00]);
+			} else if(addr==0xff44) {
+				return;
+			}else{
+			io[addr - 0xFF00] = value & 0xff;
+				}
 		} else if(addr>=0xff80 && addr <= 0xfffe) {
 			hram[addr-hram_offet] = value;
 		} else if(addr==0xffff) {
 			ic.writeIE(value);
 		}
 	}
+	public void DMA_count (int cycles) {
+		if(DMA_intransfer)  {
+			DMA_counter+=cycles;
+			if(DMA_counter >=(160)) {
+				DMA_intransfer = false;
+				DMA_counter = 0;
+			}
+		}
+	}
 
-	private void loadROM(int x) throws IOException{
-		String[] a = {"cpu_instrs.gb","01-special.gb", "02-interrupts.gb", "03-op sp,hl.gb", "04-op r,imm.gb", "05-op rp.gb", "06-ld r,r.gb" ,
-				"07-jr,jp,call,ret,rst.gb", "08-misc instrs.gb", "09-op r,r.gb", "10-bit ops.gb", "11-op a,(hl).gb"};
-		File file = new File("nekboyproject/cpu_instrs/individual/"+a[x]);
+	private void loadROM() throws IOException{
+		File file = new File("nekboyproject/cpu_instrs/individual/tetris.gb");
 		byte[] bytes = new byte[(int) file.length()];
 		rom = new int[(int)file.length()];
 		FileInputStream fis = new FileInputStream(file);

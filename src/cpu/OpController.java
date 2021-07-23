@@ -2,8 +2,8 @@ package cpu;
 import memory.*;
 
 public class OpController {
-	public static MMU mmu;
-	public static InterruptsController ic;
+	public  MMU mmu;
+	public  InterruptsController ic;
 
 	public OpController(MMU mm, InterruptsController icc) {
 		mmu = mm;
@@ -761,8 +761,9 @@ public class OpController {
 					return 8;
 				}
 			case 0xd9:
+				ic.enableIME();
 				ret(regs);
-				return -5;
+				return 16;
 			case 0xda:
 				if (regs.getFlagC()) {
 					lsb = mmu.getByte(regs.getRegval("PC"));
@@ -808,7 +809,6 @@ public class OpController {
 				return 12;
 			case 0xe2: {
 				int address = 0xff00 + regs.getRegval("C");
-				regs.incrPC();
 				mmu.writeByte(address, regs.getRegval("A"));
 				return 8;
 			}
@@ -864,10 +864,10 @@ public class OpController {
 				return 12;
 			case 0xf2:
 				ldr8(regs, "A", mmu.getByte(0xff00 + regs.getRegval("C")));
-				regs.incrPC();
 				return 8;
 			case 0xf3:
-				return -3;
+				ic.disableIME();
+				return 4;
 			case 0xf5:
 				regs.pushSP(regs.getRegval("AF"));
 				return 16;
@@ -901,7 +901,8 @@ public class OpController {
 				ldr8(regs, "A", mmu.getByte(get16(lsb, msb)));
 				return 16;
 			case 0xfb:
-				return -4;
+				ic.enableIME();
+				return 4;
 			case 0xfe:
 				cp(regs, mmu.getByte(regs.getRegval("PC")));
 				regs.incrPC();
@@ -1692,7 +1693,7 @@ public class OpController {
 
 
 	// ---- ALU-OPERATIONS -----
-	public static int add8(RegistersController regs, int x) {
+	public  int add8(RegistersController regs, int x) {
 		int a = regs.getRegval("A") & 0xff;
 		int result = (a + x) & 0xff;
 		regs.setFlagZ(result);
@@ -1705,7 +1706,7 @@ public class OpController {
 		return 4;
 	}
 
-	public static int adc8(RegistersController regs, int x) {
+	public  int adc8(RegistersController regs, int x) {
 		int a = regs.getRegval("A")&0xff;
 		int carry = 0;
 		if(regs.getFlagC()) carry = 1;
@@ -1720,7 +1721,7 @@ public class OpController {
 		return 4;
 	}
 
-	public static int sub8(RegistersController regs, int x) {
+	public  int sub8(RegistersController regs, int x) {
 		int a = regs.getRegval("A") & 0xff;
 		int result = (a - x) & 0xff;
 		regs.setFlagZ(result);
@@ -1731,7 +1732,7 @@ public class OpController {
 		return 4;
 	}
 
-	public static int sbc8(RegistersController regs, int x) {
+	public  int sbc8(RegistersController regs, int x) {
 		x = x&0xff;
 		int a = regs.getRegval("A")&0xff;
 		int carry = 0;
@@ -1746,7 +1747,7 @@ public class OpController {
 	}
 
 
-	public static int and(RegistersController regs, int x) {
+	public  int and(RegistersController regs, int x) {
 		int a = regs.getRegval("A");
 		int result = a & x & 0xff;
 		regs.setFlagZ(result);
@@ -1757,7 +1758,7 @@ public class OpController {
 		return 4;
 	}
 
-	public static int or(RegistersController regs, int x) {
+	public  int or(RegistersController regs, int x) {
 		int a = regs.getRegval("A");
 		int result = (a | (x & 0xff)) & 0xff;
 		regs.setFlagZ(result);
@@ -1768,7 +1769,7 @@ public class OpController {
 		return 4;
 	}
 
-	public static int xor(RegistersController regs, int x) {
+	public  int xor(RegistersController regs, int x) {
 		int a = regs.getRegval("A");
 		int result = a ^ (x & 0xff);
 		regs.setFlagZ(result);
@@ -1779,7 +1780,7 @@ public class OpController {
 		return 4;
 	}
 
-	public static int cp(RegistersController regs, int x) {
+	public  int cp(RegistersController regs, int x) {
 		int a = regs.getRegval("A");
 		int result = (a & 0xff) - (x & 0xff);
 		regs.setFlagZ(result);
@@ -1789,7 +1790,7 @@ public class OpController {
 		return 4;
 	}
 
-	public static int inc(RegistersController regs, String x) {
+	public  int inc(RegistersController regs, String x) {
 		int n = regs.getRegval(x);
 		int result = ((n & 0xff) + 1) & 0xff;
 		regs.setFlagZ(result);
@@ -1799,7 +1800,7 @@ public class OpController {
 		return 4;
 	}
 
-	public static int dec(RegistersController regs, String x) {
+	public  int dec(RegistersController regs, String x) {
 		int n = regs.getRegval(x);
 		int result = ((n & 0xff) - 1) & 0xff;
 		regs.setFlagZ(result);
@@ -1809,7 +1810,7 @@ public class OpController {
 		return 4;
 	}
 
-	public static int addHL(RegistersController regs, String x) {
+	public  int addHL(RegistersController regs, String x) {
 		int n = regs.getRegval(x)&0xffff;
 		int hl = regs.getRegval("HL")&0xffff;
 		int result = (hl+n)&0xffff;
@@ -1820,7 +1821,7 @@ public class OpController {
 		return 8;
 	}
 
-	public static int addSP(RegistersController regs, int x) {
+	public  int addSP(RegistersController regs, int x) {
 		int n = regs.getRegval("SP");
 		int result = (n + x) & 0xffff;
 		regs.setFlagN(0);
@@ -1831,14 +1832,14 @@ public class OpController {
 		return 16;
 	}
 
-	public static int inc16(RegistersController regs, String x) {
+	public  int inc16(RegistersController regs, String x) {
 			int n = regs.getRegval(x);
 				n = (n + 1) & 0xffff;
 				regs.setReg(n, x);
 		return 8;
 	}
 
-	public static int dec16(RegistersController regs, String x) {
+	public  int dec16(RegistersController regs, String x) {
 		int n = regs.getRegval(x);
 		n = (n - 1) & 0xffff;
 		regs.setReg(n, x);
@@ -1846,34 +1847,34 @@ public class OpController {
 	}
 
 	// ------ LOADS ------
-	public static int ldr8(RegistersController regs, String destr8, int valuer8) {
+	public int ldr8(RegistersController regs, String destr8, int valuer8) {
 		regs.setReg(valuer8, destr8);
 		return 4;
 	}
 
-	public static int ldr16(RegistersController regs, String destination, int source) {
+	public  int ldr16(RegistersController regs, String destination, int source) {
 		regs.setReg(source, destination);
 		return 4;
 	}
 
-	public static int ldtomem(RegistersController regs, String des, int value) {
+	public  int ldtomem(RegistersController regs, String des, int value) {
 		mmu.writeByte(regs.getRegval(des), value);
 		return 8;
 	}
 
-	public static int ldtomemAdr(RegistersController regs, int des, String value) {
+	public  int ldtomemAdr(RegistersController regs, int des, String value) {
 		mmu.writeByte(des, regs.getRegval(value));
 		return 8;
 	}
 
-	public static int cpl(RegistersController regs) {
+	public  int cpl(RegistersController regs) {
 		regs.setReg((~regs.getRegval("A")) & 0xff, "A");
 		regs.setFlagN(1);
 		regs.setFlagH(true);
 		return 4;
 	}
 
-	public static int ccf(RegistersController regs) {
+	public  int ccf(RegistersController regs) {
 		if (regs.getFlagC()) {
 			regs.setFlagC(false);
 		} else {
@@ -1884,27 +1885,27 @@ public class OpController {
 		return 4;
 	}
 
-	public static int ret(RegistersController regs) {
+	public  int ret(RegistersController regs) {
 		regs.setReg(regs.popSP(), "PC");
 		return 8;
 	}
 
-	public static int get16(int lsb, int msb) {
+	public  int get16(int lsb, int msb) {
 		return (lsb | (msb << 8)) & 0xffff;
 	}
 
-	public static int jp(RegistersController regs, int to) {
+	public  int jp(RegistersController regs, int to) {
 		regs.setReg(to, "PC");
 		return 0;
 	}
 
-	public static int call(RegistersController regs, int to) {
+	public  int call(RegistersController regs, int to) {
 		regs.pushSP(regs.getRegval("PC"));
 		jp(regs, to);
 		return 12;
 	}
 
-	public static int RLA(RegistersController regs) {
+	public  int RLA(RegistersController regs) {
 		int c = 0;
 		if (regs.getFlagC()) c = 1;
 		regs.setFlagC(Bits.isBit(regs.getRegval("A"), 7));
@@ -1915,7 +1916,7 @@ public class OpController {
 		return 4;
 	}
 
-	public static int RL(RegistersController regs, String torotate) {
+	public  int RL(RegistersController regs, String torotate) {
 		int value = 0xff & regs.getRegval(torotate);
 		int c = value & 0b10000000;
 		value = 0xff & (value << 1);
@@ -1928,7 +1929,7 @@ public class OpController {
 		return 4;
 	}
 
-	public static int RLCA(RegistersController regs, String torotate) {
+	public  int RLCA(RegistersController regs, String torotate) {
 		int b = 0;
 		if (Bits.isBit(regs.getRegval(torotate), 7)) b = 1;
 		regs.setFlagC(Bits.isBit(regs.getRegval(torotate), 7));
@@ -1939,7 +1940,7 @@ public class OpController {
 		return 4;
 	}
 
-	public static int RLC(RegistersController regs, String torotate) {
+	public  int RLC(RegistersController regs, String torotate) {
 		int b = 0;
 		int value = regs.getRegval(torotate)&0xff;
 		if (Bits.isBit(value, 7)) b = 1;
@@ -1951,7 +1952,7 @@ public class OpController {
 		return 4;
 	}
 
-	public static int RLCmem(RegistersController regs, String torotate) {
+	public  int RLCmem(RegistersController regs, String torotate) {
 		int b = 0;
 		int value = mmu.getByte(regs.getRegval(torotate));
 		if (Bits.isBit(value, 7)) b = 1;
@@ -1963,7 +1964,7 @@ public class OpController {
 		return 4;
 	}
 
-	public static int RLmem(RegistersController regs, String torotate) {
+	public  int RLmem(RegistersController regs, String torotate) {
 		int value = 0xff & mmu.getByte(0xffff & regs.getRegval(torotate));
 		int c = value & 0b10000000;
 		value = 0xff & (value << 1);
@@ -1976,7 +1977,7 @@ public class OpController {
 		return 16;
 	}
 
-	public static int RRCmem(RegistersController regs, String torotate) {
+	public  int RRCmem(RegistersController regs, String torotate) {
 		int value = 0xff & mmu.getByte(regs.getRegval(torotate));
 		int c = value & 0x1;
 		int v = 0xff & Bits.setBit(value >> 1, c == 1, 7);
@@ -1988,7 +1989,7 @@ public class OpController {
 		return 4;
 	}
 
-	public static int RRmem(RegistersController regs, String torotate) {
+	public  int RRmem(RegistersController regs, String torotate) {
 		int value = 0xff & mmu.getByte(0xffff & regs.getRegval(torotate));
 		int b0 = value & 0x1;
 		value = 0xff & (value >>> 1);
@@ -2001,7 +2002,7 @@ public class OpController {
 		return 16;
 	}
 
-	public static int SLAmem(RegistersController regs, String torotate) {
+	public  int SLAmem(RegistersController regs, String torotate) {
 		int value = 0xff & mmu.getByte(regs.getRegval(torotate));
 		regs.setFlagC(Bits.isBit((value), 7));
 		value = 0xff & (value << 1);
@@ -2012,7 +2013,7 @@ public class OpController {
 		return 4;
 	}
 
-	public static int SRAmem(RegistersController regs, String torotate) {
+	public  int SRAmem(RegistersController regs, String torotate) {
 		int value = 0xff & mmu.getByte(0xffff & regs.getRegval(torotate));
 		regs.setFlagC(Bits.isBit(value, 0));
 		value = 0xff & (value >>> 1);
@@ -2024,7 +2025,7 @@ public class OpController {
 		return 4;
 	}
 
-	public static int SRLmem(RegistersController regs, String torotate) {
+	public  int SRLmem(RegistersController regs, String torotate) {
 		int value = mmu.getByte(regs.getRegval(torotate));
 		regs.setFlagC(Bits.isBit(value, 0));
 		regs.setFlagN(0);
@@ -2034,7 +2035,7 @@ public class OpController {
 		return 4;
 	}
 
-	public static int swapmem(RegistersController regs, String r) {
+	public  int swapmem(RegistersController regs, String r) {
 		int value = mmu.getByte(regs.getRegval(r));
 		int msb = (value >>> 4) & 0xf;
 		int lsb = value & 0xf;
@@ -2047,7 +2048,7 @@ public class OpController {
 	}
 
 
-	public static int RRCA(RegistersController regs) {
+	public  int RRCA(RegistersController regs) {
 		int c = 0;
 		if (Bits.isBit(regs.getRegval("A"), 0)) c = 1;
 		int v = Bits.setBit(regs.getRegval("A") >>> 1, c == 1, 7);
@@ -2059,7 +2060,7 @@ public class OpController {
 		return 4;
 	}
 
-	public static int RRC(RegistersController regs, String to) {
+	public  int RRC(RegistersController regs, String to) {
 		int value = 0xff & regs.getRegval(to);
 		int c = value & 0x1;
 		int v = 0xff & Bits.setBit(value >>> 1, c == 1, 7);
@@ -2071,7 +2072,7 @@ public class OpController {
 		return 4;
 	}
 
-	public static int RRA(RegistersController regs) {
+	public  int RRA(RegistersController regs) {
 		int b0 = 0, c = 0;
 		if (Bits.isBit(regs.getRegval("A"), 0)) b0 = 1;
 		if (regs.getFlagC()) c = 1;
@@ -2084,7 +2085,7 @@ public class OpController {
 		return 4;
 	}
 
-	public static int RR(RegistersController regs, String to) {
+	public  int RR(RegistersController regs, String to) {
 		int value = 0xff & regs.getRegval(to);
 		int b0 = value & 0x1;
 		value = 0xff & (value >>> 1);
@@ -2097,7 +2098,7 @@ public class OpController {
 		return 4;
 	}
 
-	public static int SLA(RegistersController regs, String torotate) {
+	public  int SLA(RegistersController regs, String torotate) {
 		int value = 0xff & regs.getRegval(torotate);
 		regs.setFlagC(Bits.isBit((value), 7));
 		value = 0xff & (value << 1);
@@ -2108,7 +2109,7 @@ public class OpController {
 		return 4;
 	}
 
-	public static int SRA(RegistersController regs, String torotate) {
+	public  int SRA(RegistersController regs, String torotate) {
 		int value = 0xff & regs.getRegval(torotate);
 		regs.setFlagC(Bits.isBit(value, 0));
 		value = 0xff & (value >>> 1);
@@ -2120,7 +2121,7 @@ public class OpController {
 		return 4;
 	}
 
-	public static int SRL(RegistersController regs, String torotate) {
+	public  int SRL(RegistersController regs, String torotate) {
 		regs.setFlagC(Bits.isBit(regs.getRegval(torotate), 0));
 		regs.setFlagN(0);
 		regs.setFlagZ(regs.getRegval(torotate) >>> 1);
@@ -2129,7 +2130,7 @@ public class OpController {
 		return 4;
 	}
 
-	public static int swapR(RegistersController regs, String r) {
+	public  int swapR(RegistersController regs, String r) {
 		int msb = (regs.getRegval(r) >>> 4) & 0xf;
 		int lsb = regs.getRegval(r) & 0xf;
 		regs.setFlagZ(regs.getRegval(r));
@@ -2140,7 +2141,7 @@ public class OpController {
 		return 4;
 	}
 
-	public static int bit(RegistersController regs, int bit, int value) {
+	public  int bit(RegistersController regs, int bit, int value) {
 		int b = 0;
 		if (Bits.isBit(value, bit)) b = 1;
 		regs.setFlagZ(b);
@@ -2150,29 +2151,29 @@ public class OpController {
 	}
 
 
-	public static int setR(RegistersController regs, int bit, String r) {
+	public  int setR(RegistersController regs, int bit, String r) {
 		regs.setReg(Bits.setBit(regs.getRegval(r), true, bit), r);
 		return 8;
 	}
 
-	public static int setmem(RegistersController regs, int bit, String r) {
+	public  int setmem(RegistersController regs, int bit, String r) {
 		int value = mmu.getByte(regs.getRegval(r));
 		mmu.writeByte(regs.getRegval(r), Bits.setBit(value, true, bit));
 		return 8;
 	}
 
-	public static int resetemem(RegistersController regs, int bit, String r) {
+	public  int resetemem(RegistersController regs, int bit, String r) {
 		int value = mmu.getByte(regs.getRegval(r));
 		mmu.writeByte(regs.getRegval(r), Bits.setBit(value, false, bit));
 		return 8;
 	}
 
-	public static int resetR(RegistersController regs, int bit, String r) {
+	public  int resetR(RegistersController regs, int bit, String r) {
 		regs.setReg(Bits.setBit(regs.getRegval(r), false, bit), r);
 		return 8;
 	}
 
-	public static int incMem(RegistersController regs, int addr) {
+	public  int incMem(RegistersController regs, int addr) {
 		int value = 0xff & mmu.getByte(addr & 0xffff);
 		regs.setFlagN(0);
 		regs.setFlagH((value & 0xf) == 0xf);
@@ -2181,16 +2182,16 @@ public class OpController {
 		return 12;
 	}
 
-	public static int decMem(RegistersController regs, int addr) {
+	public  int decMem(RegistersController regs, int addr) {
 		int value = 0xff & mmu.getByte(addr & 0xffff);
 		regs.setFlagN(1);
 		regs.setFlagH((value & 0xf) == 0x0);
-		mmu.writeByte(addr & 0xffff, value - 1);
+		mmu.writeByte(addr & 0xffff, (value - 1)&0xff);
 		regs.setFlagZ(value - 1);
 		return 12;
 	}
 
-	private static void DAA(RegistersController regs) {
+	private  void DAA(RegistersController regs) {
 		int a = regs.getRegval("A");
 		if (regs.getFlagN()) {
 			if (regs.getFlagC()) {

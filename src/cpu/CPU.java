@@ -3,18 +3,17 @@ package cpu;
 import graphic.*;
 import memory.*;
 
+import java.awt.event.KeyEvent;
+import java.awt.event.KeyListener;
 import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.PrintStream;
+import java.util.Arrays;
 
 public class CPU {
 
-	enum State{
-		HALT,
-		STOP,
-		RUN
-	}
-
-	private InterruptsController inc;
+	private InterruptsController ic;
 	private RegistersController regc;
 	private MMU mmu;
 	private OpController insc;
@@ -23,13 +22,23 @@ public class CPU {
 	private State state;
 	private GPU gpu;
 
+	public static int a = 0;
+
 	public CPU() throws IOException {
-		inc = new InterruptsController();
-		timer = new Timer(inc);
-		mmu = new MMU(inc, timer);
+		ic = new InterruptsController();
+		timer = new Timer(ic);
+		Joypad j = new Joypad(ic);
+		mmu = new MMU(ic, timer, j);
 	//	gpu = new GPU(mmu, inc);
 		regc = new RegistersController(mmu);
-		insc = new OpController(mmu, inc);
+		insc = new OpController(mmu, ic);
+		gpu = new GPU(mmu, ic, j);
+	}
+
+	public enum State{
+		HALT,
+		STOP,
+		RUN
 	}
 
 	public void reset() {
@@ -43,7 +52,9 @@ public class CPU {
 		regc.setReg(0x4D, "L");
 		regc.setReg(0xFFFE, "SP");
 		regc.setReg(0x100, "PC");
-		mmu.writeByte(0, 0x80);// LCD STAT;
+		mmu.io[0] = 0xff;
+		mmu.io[0xff41-0xff00] = 0x80;
+		mmu.io[0xff40-0xff00] = 0x91;
 		mmu.writeByte(0xFF05, 0x00); // TIMA
 		mmu.writeByte(0xFF06, 0x00); // TMA
 		mmu.writeByte(0xFF07, 0x00); // TAC
@@ -65,7 +76,6 @@ public class CPU {
 		mmu.writeByte(0xFF24, 0x77); // NR50
 		mmu.writeByte(0xFF25, 0xF3); // NR51
 		mmu.writeByte(0xFF26, 0xF1); // NR52
-		mmu.writeByte(0xFF40, 0x91); // LCDC
 		mmu.writeByte(0xFF42, 0x00); // SCY
 		mmu.writeByte(0xFF43, 0x00); // SCX
 		mmu.writeByte(0xFF45, 0x00); // LYC
@@ -73,28 +83,64 @@ public class CPU {
 		mmu.writeByte(0xFF48, 0xFF); // OBP0
 		mmu.writeByte(0xFF49, 0xFF); // OBP1
 		mmu.writeByte(0xFF4A, 0x00); // WY
-		mmu.writeByte(0xFF4B, 0x00); // WX/home/dk/Documents/Gameboy/7.txt
+		mmu.writeByte(0xFF4B, 0x00); // WX
 		mmu.writeByte(0xFFFF, 0x00); // I
 	}
 
 	public void run() throws FileNotFoundException {
-	/*	PrintStream out = new PrintStream(new FileOutputStream("7.txt"));
-		System.setOut(out);*/
+		/*PrintStream out = new PrintStream(new FileOutputStream("3.txt"));
+		System.setOut(out); */
 		while(true) {
+			if(ic.getIME() & ic.delayCheck()) {
+				cycles +=interruptsHandler();
+			}
 			int current_op = mmu.getByte(regc.getRegval("PC"));
 		//	System.out.println("A: " + String.format("%x",regc.getRegval("A")) + ", BC: " + String.format("%x",regc.getRegval("BC")) + ", DE:" + String.format("%x", regc.getRegval("DE")) + ", HL:" + String.format("%x", regc.getRegval("HL")));
-		//	System.out.println("//PC: " + String.format("%x",regc.getRegval("PC")) +  "    OPCODE: " + String.format("%x", current_op) + " STACKADD: "+ String.format("%x", regc.getRegval("SP"))+ "STACK:  "+ String.format("%x", mmu.getByte(regc.getRegval("PC")))+ ", "+ String.format("%x", mmu.getByte(regc.getRegval("SP")+1)) +" NEXT TWO BYTES: " + String.format("%x", mmu.getByte(regc.getRegval("PC")+1)) + " , " + String.format("%x", mmu.getByte(regc.getRegval("PC")+2))+ " ///// "+ Bits.isBit(regc.getRegval("F"), 7));
+		//	System.out.println("//PC: " + String.format("%x",regc.getRegval("PC")) +  "    OPCODE: " + String.format("%x", current_op) + " STACKADD: "+ String.format("%x", regc.getRegval("SP"))+ "STACK:  "+ String.format("%x", mmu.getByte(regc.getRegval("SP")))+ ", "+ String.format("%x", mmu.getByte(regc.getRegval("SP")+1)) +" NEXT TWO BYTES: " + String.format("%x", mmu.getByte(regc.getRegval("PC")+1)) + " , " + String.format("%x", mmu.getByte(regc.getRegval("PC")+2))+ " ///// "+ Bits.isBit(regc.getRegval("F"), 7));
 			regc.incrPC();
-			int cycl=insc.execInstr(current_op, regc);
-	//		if(cycl == -1 || cycl == -2) break;
-			cycles+= cycl;
-			timer.tick();
+			int cycles_passed = insc.execInstr(current_op, regc);
+			cycles+=cycles_passed;
+			timer.tick(cycles_passed);
+		//	mmu.DMA_count(cycles_passed);
+		//	System.out.println(mmu.getByte(0xff00));
+			gpu.update(cycles_passed);
 			if (mmu.getByte(0xff02) == 0x81) {
 				int c = mmu.getByte(0xff01);
-				System.out.println((char)c);
+			//	System.out.println((char)c);
 				mmu.writeByte(0xff02, 0x0);
 			}
 		}
+	}
+
+	private int interruptsHandler () {
+		int ief = ic.getIF();
+		int ie = ic.getIE();
+		if(Bits.isBit(ief, 0) & Bits.isBit(ie, 0)) { //v-blank interrupt
+			ic.resetIF(0);
+			ic.disableIME();
+			insc.call(regc, 0x40);
+			return 12;
+		} else if(Bits.isBit(ief,1) & Bits.isBit(ie, 1)) { //lcd stat
+			ic.resetIF(1);
+			ic.disableIME();
+			insc.call(regc, 0x48);
+			return 12;
+		} else if(Bits.isBit(ief, 2) & Bits.isBit(ie, 2))  { //Timer
+			ic.resetIF(2);
+			ic.disableIME();
+			insc.call(regc, 0x50);
+		} else if(Bits.isBit(ief, 3) & Bits.isBit(ie, 3)) { // Serial
+			ic.resetIF(3);
+			ic.disableIME();
+			insc.call(regc, 0x58);
+			return 12;
+		} else if(Bits.isBit(ief, 4) & Bits.isBit(ie, 4)) { // Joypad
+			ic.resetIF(4);
+			ic.disableIME();
+			insc.call(regc, 0x60);
+			return 12;
+		}
+		return 0;
 	}
 
 	public static void main(String[] args) throws IOException {

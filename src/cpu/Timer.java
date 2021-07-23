@@ -14,19 +14,15 @@ public class Timer {
         this.ic = c;
     }
 
-    public void tick() {
-        divcounter = divcounter +4;
-        if(++TIMA > 0xff) {
-            TIMA = TMA&0xff;
-            this.ic.requestInterrupt(2);
-        }
+    public void tick(int cycles) {
+        divcounter = divcounter+cycles;
         if(divcounter >= 256) {
             DIV++;
             divcounter = 0;
         }
         if(Bits.isBit(TAC,2)) {
             int clockmode = TAC&0b11;
-            timacounter+=4;
+            timacounter+=cycles;
             if(clockmode == 0) {
                 if(timacounter >= 1024) {
                     TIMA++;
@@ -47,6 +43,10 @@ public class Timer {
                     TIMA++;
                     timacounter = 0;
                 }
+            }
+            if(TIMA > 0xff) {
+                TIMA = TMA&0xff;
+                this.ic.requestInterrupt(2);
             }
         }
     }
