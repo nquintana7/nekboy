@@ -9,16 +9,20 @@ public class ROMController {
     private int[] rom_0;
     private int[][] rom_banks;
     private boolean ex_ram = false;
+    private boolean enabled_ramtimer = false;
     private boolean enabled_eram = false;
+    private boolean enabled_timer = false;
     private int[][] eram;
     private boolean battery;
     private int actual_bank;
     private int actual_ram;
     private boolean left_boot;
     private MBC_status mbc;
+    private int RTC;
 
     private enum MBC_status {
         NO_BANK,
+        MBC1,
         MBC3
     };
 
@@ -30,9 +34,13 @@ public class ROMController {
                 return rom_banks[0][addr];
             }
         } else if (addr <=0x7fff){
-            return rom_banks[actual_bank][addr-16384];
+            return rom_banks[actual_bank][addr-0x4000];
         } else if (addr >= 0xa000 && addr <= 0xbfff) {
-            return eram[actual_ram][addr-0xa000];
+          if(enabled_eram)  {
+              return eram[actual_ram][addr-0xa000];
+          } else if(enabled_timer) {
+              return RTC;
+          }
         }
         return 0;
     }
@@ -46,23 +54,28 @@ public class ROMController {
             if(addr <= 0x1fff) {
                 if(value == 0) {
                     enabled_eram = false;
+                    enabled_timer = false;
+                    enabled_ramtimer = false;
                 } else if(value == 0xa) {
                     enabled_eram = true;
+                    enabled_ramtimer = true;
                 }
             } else if(addr <= 0x3fff) {
-                value = value&0b11111;
                 actual_bank = value;
                 if(value == 0) actual_bank = 1;
             } else if(addr <= 0x5fff) {
-                if(value <= 0x3) {
-                    if(enabled_eram) {
+                if(enabled_ramtimer) {
+                    if(value <= 0x3) {
+                        enabled_eram = true;
+                        enabled_timer = false;
                         actual_ram = value;
+                    } else if(value >= 0x8 && value <= 0xc) {
+                        enabled_eram = false;
+                        enabled_timer = true;
                     }
-                } else if(value >= 0x8 && value <= 0xc) {
-
                 }
             } else if(addr >= 0xa000 & addr <= 0xbfff) {
-                eram[actual_ram][addr-0xa000] = value;
+              if(enabled_eram)  eram[actual_ram][addr-0xa000] = value;
             }
         }
     }
@@ -96,6 +109,25 @@ public class ROMController {
                 actual_bank = 1;
                 break;
             }
+            case(0x1) : {
+                int rom_size = rom_0[0x148];
+                switch(rom_size) {
+                    case(0x1): {
+                        rom_banks = new int[4][16384];
+                        rom_banks[0] = rom_0;
+                        for(int i = 1; i<4; i++) {
+                            for(int j = 0; j<16384;j++) {
+                                rom_banks[i][j] = ((int)bytes[(i*16384)+j])&0xff;
+                            }
+                        }
+                        break;
+                }
+                }
+                mbc = MBC_status.MBC1;
+                actual_bank = 1;
+                break;
+            }
+
             case(0x13): {
                 int rom_size = rom_0[0x148];
                 switch(rom_size) {
@@ -107,10 +139,10 @@ public class ROMController {
                                 rom_banks[i][j] = ((int)bytes[(i*16384)+j])&0xff;
                             }
                         }
+                        mbc = MBC_status.MBC3;
                         break;
                     }
                 }
-                mbc = MBC_status.MBC3;
                 actual_bank = 1;
                 break;
             }
@@ -119,11 +151,25 @@ public class ROMController {
 
     private void decideRAM(byte[] bytes) {
         switch(rom_0[0x149]) {
+            case(0x0): {
+                break;
+            }
+            case(0x2): {
+                ex_ram = true;
+                eram = new int[1][8192];
+                actual_ram = 0;
+                break;
+            }
             case(0x3): {
                 ex_ram = true;
                 eram = new int[4][8192];
                 actual_ram = 0;
                 break;
+            }
+            case(0x4): {
+                ex_ram = true;
+                eram = new int[16][8192];
+                actual_ram = 0;
             }
         }
     }

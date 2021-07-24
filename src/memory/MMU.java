@@ -121,7 +121,7 @@ public class MMU {
 				int address = (value<<8)&0xffff; // source address is data * 100
 				for (int i = 0 ; i < 0xA0; i++)
 				{
-					writeByte(0xFE00+i,getByte(address+i)); ;
+					writeByte(0xFE00+i,0xff&getByte(address+i)); ;
 				}
 			} else if(addr == 0xff41) {
 				io[addr-0xff00] = (value&0b1111000)&(0xff&io[addr-0xff00]);

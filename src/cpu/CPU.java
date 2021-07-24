@@ -89,7 +89,8 @@ public class CPU {
 			regc.incrPC();
 			int cycles_passed = insc.execInstr(current_op, regc);
 			cycles+=cycles_passed;
-			timer.tick(cycles_passed);
+			timer.tick(cycles_passed*2);
+			if(current_op == 0x27) System.out.println("ola");
 		//	mmu.DMA_count(cycles_passed);
 			gpu.update(cycles_passed);
 		}

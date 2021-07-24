@@ -144,7 +144,7 @@ public class GPU {
             case 3: //Scanline (accessing VRAM & OAM)
                 //CPU <cannot> access OAM and VRAM during this period. CGB Mode: Cannot access Palette Data (FF69,FF6B) either.
 
-                if (modeClock >= 172) {				//required clock cycles for accessing VRAM & OAM
+                if (modeClock >= 289) {				//required clock cycles for accessing VRAM & OAM
                     mode = 0;						//set mode as H-blank
                     actual_LCD_STAT = Bits.setBit(actual_LCD_STAT, false, 1);
                     actual_LCD_STAT = Bits.setBit(actual_LCD_STAT, false, 0);
