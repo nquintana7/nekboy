@@ -2,14 +2,8 @@ package cpu;
 
 import graphic.*;
 import memory.*;
-
-import java.awt.event.KeyEvent;
-import java.awt.event.KeyListener;
 import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.PrintStream;
-import java.util.Arrays;
 
 public class CPU {
 
@@ -28,7 +22,7 @@ public class CPU {
 		ic = new InterruptsController();
 		timer = new Timer(ic);
 		Joypad j = new Joypad(ic);
-		mmu = new MMU(ic, timer, j);
+		mmu = new MMU(ic, timer, j, new ROMController());
 	//	gpu = new GPU(mmu, inc);
 		regc = new RegistersController(mmu);
 		insc = new OpController(mmu, ic);
@@ -52,7 +46,6 @@ public class CPU {
 		regc.setReg(0x4D, "L");
 		regc.setReg(0xFFFE, "SP");
 		regc.setReg(0x100, "PC");
-		mmu.io[0] = 0xff;
 		mmu.io[0xff41-0xff00] = 0x80;
 		mmu.io[0xff40-0xff00] = 0x91;
 		mmu.writeByte(0xFF05, 0x00); // TIMA
@@ -87,28 +80,18 @@ public class CPU {
 		mmu.writeByte(0xFFFF, 0x00); // I
 	}
 
-	public void run() throws FileNotFoundException {
-		/*PrintStream out = new PrintStream(new FileOutputStream("3.txt"));
-		System.setOut(out); */
+	public void run() {
 		while(true) {
 			if(ic.getIME() & ic.delayCheck()) {
 				cycles +=interruptsHandler();
 			}
 			int current_op = mmu.getByte(regc.getRegval("PC"));
-		//	System.out.println("A: " + String.format("%x",regc.getRegval("A")) + ", BC: " + String.format("%x",regc.getRegval("BC")) + ", DE:" + String.format("%x", regc.getRegval("DE")) + ", HL:" + String.format("%x", regc.getRegval("HL")));
-		//	System.out.println("//PC: " + String.format("%x",regc.getRegval("PC")) +  "    OPCODE: " + String.format("%x", current_op) + " STACKADD: "+ String.format("%x", regc.getRegval("SP"))+ "STACK:  "+ String.format("%x", mmu.getByte(regc.getRegval("SP")))+ ", "+ String.format("%x", mmu.getByte(regc.getRegval("SP")+1)) +" NEXT TWO BYTES: " + String.format("%x", mmu.getByte(regc.getRegval("PC")+1)) + " , " + String.format("%x", mmu.getByte(regc.getRegval("PC")+2))+ " ///// "+ Bits.isBit(regc.getRegval("F"), 7));
 			regc.incrPC();
 			int cycles_passed = insc.execInstr(current_op, regc);
 			cycles+=cycles_passed;
 			timer.tick(cycles_passed);
 		//	mmu.DMA_count(cycles_passed);
-		//	System.out.println(mmu.getByte(0xff00));
 			gpu.update(cycles_passed);
-			if (mmu.getByte(0xff02) == 0x81) {
-				int c = mmu.getByte(0xff01);
-			//	System.out.println((char)c);
-				mmu.writeByte(0xff02, 0x0);
-			}
 		}
 	}
 

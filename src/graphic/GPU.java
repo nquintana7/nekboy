@@ -1,6 +1,7 @@
 
 
 package graphic;
+
 import javax.swing.JFrame;
 import java.awt.Color;
 import memory.*;
@@ -86,12 +87,14 @@ public class GPU {
             return;
         }
 
+        int scanline = mmu.getByte(LY);
+
         switch (mode) {
 
             case 0: //HBLANK
                 if(modeClock >= 204) {
                     renderFrame();
-                    if(mmu.getByte(LY) == 143) {
+                    if(scanline == 143) {
                         mode = 1;
                         ic.requestInterrupt(0);
                         actual_LCD_STAT = Bits.setBit(actual_LCD_STAT, true, 0);
@@ -103,7 +106,7 @@ public class GPU {
                     }
                     modeClock=0;
                     mmu.io[LY-0xff00] = mmu.io[LY-0xff00]+1;
-                    if(mmu.getByte(LY) == mmu.getByte(LYC)) {
+                    if(scanline == mmu.getByte(LYC)) {
                         actual_LCD_STAT = Bits.setBit(actual_LCD_STAT, true, 2);
                         if(Bits.isBit(actual_LCD_STAT, 6)) {
                             ic.requestInterrupt(1);
@@ -115,11 +118,11 @@ public class GPU {
                break;
             case 1:	//Vertical blank mode
                 //CPU can access both the display RAM (8000h-9FFFh) and OAM (FE00h-FE9Fh)
-                if (modeClock >= 456) {					//required clock cycles for full H-blank cycle (used for invisible scanlines)
+                if (modeClock >= 4560) {					//required clock cycles for full H-blank cycle (used for invisible scanlines)
                     modeClock = 0;							//reset the clock
                     // increment line number
                     mmu.io[LY-0xff00] = mmu.io[LY-0xff00]+1;
-                    if (mmu.getByte(LY) > 153) { 			//reached full frame (including invisible lines)
+                    if (scanline > 153) { 			//reached full frame (including invisible lines)
                         mmu.io[LY-0xff00] = 0;		//reset scan line number
                         mode = 2;						//set mode as access OAM mode
                         actual_LCD_STAT = Bits.setBit(actual_LCD_STAT, true, 1);
@@ -224,6 +227,10 @@ public class GPU {
 
                     Color col = getSpriteColour(colourNum, palette);
 
+                    if ((scanline<0)||(scanline>143)||(xpos+(7-pixel)<0)||(xpos+(7-pixel)>159))
+                    {
+                        continue ;
+                    }
                     tileSet[xpos+(7-pixel)][scanline] = col.getRGB();
                 }
             }
@@ -277,36 +284,38 @@ public class GPU {
 
 
         if (inWindow)
-            yPos = scanLine - windowY;
+            yPos = (scanLine - windowY)&0xff;
         else
             yPos = (scanLine + scrollY&0xff)&0xff;
 
 
-        tileRow = (yPos / 8)*32;
+        tileRow = ((byte)(yPos / 8))*32;
 
         for(int pixel = 0; pixel < 160; pixel++){
 
-            xPos = scrollX + pixel;
+            xPos = (scrollX + pixel)&0xff;
 
             if (inWindow && (pixel >= windowX))
                 xPos = pixel - windowX;
 
+            int tileNum;
+
+
             tileCol = xPos / 8;
 
-            tileAddr = tileMemAddr + tileCol + tileRow;
+            tileAddr = (tileMemAddr + tileCol + tileRow)&0xffff;
 
 
-            if (signed)
-                tileDataAddr = ((byte) mmu.getByte(tileAddr) )+ 128;
-            else
-                tileDataAddr = mmu.getByte(tileAddr);
+            if (signed) {
+                tileNum = (byte) (((byte)mmu.getByte(tileAddr)) & 0xff) + 128;
+            } else {
+                tileNum = 0xff&mmu.getByte(tileAddr);
+            }
 
-            tileDataAddr &= 0xFF;
+            tileLine = yPos % 8;
 
-           tileLine = yPos % 8;
-
-            data1 = mmu.getByte(tileData + (tileDataAddr*TILE_SIZE) + (tileLine*2));
-            data2 = mmu.getByte(tileData + (tileDataAddr*TILE_SIZE) + (tileLine*2) + 1);
+            data1 = mmu.getByte(tileData + (tileNum*TILE_SIZE) + (tileLine*2));
+            data2 = mmu.getByte(tileData + (tileNum*TILE_SIZE) + (tileLine*2) + 1);
 
             colourBit = xPos % 8;
 
@@ -383,7 +392,6 @@ public class GPU {
         }
 
         switch(colNum){
-            case 0: returnCol = null; 		break;
             case 1: returnCol = Color.LIGHT_GRAY;  	break;
             case 2: returnCol = Color.DARK_GRAY;  	break;
             case 3: returnCol = Color.BLACK; 		break;
