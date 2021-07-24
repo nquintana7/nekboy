@@ -4,13 +4,14 @@ This is a in development Gameboy (DMG-01) Emulator written in Java, during my fr
 ## Status
 * Almost everything is partially implemented, except Sound.
 * Runs Tetris and Dr Mario, it gets stuck on Pokemon Blue after pressing "New Game", only Professor Oak appears and no text.
-* Partially implemented MBC3 and external ram in order to play Pokemon Blue. No other MBC Implementation yet.
+* Partially implemented MBC3 and external ram in order to play Pokemon Red. No other MBC Implementation yet.
 * Passes almost all CPU Instructions Blarggs test.
 * Emulation is a bit slow/CPU heavy, I need to look for ways of making it more efficient.
 * Timer and Interrupts are yet not correctly implemented.
 
 ## Screenshots
-![Tetris](imgs/pic2.png)
+![Tetris](imgs/pic1.png)
+![Pokemon Red](imgs/pic2.png)
 
 ## Resources
 I could not have made any progress without the amazing resources out there. This are some I used:
