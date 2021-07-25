@@ -4,6 +4,7 @@ package graphic;
 
 import javax.swing.JFrame;
 import java.awt.Color;
+
 import memory.*;
 import cpu.*;
 
@@ -48,6 +49,8 @@ public class GPU {
     public static final int OBP0 = 0xFF48;
     public static final int OBP1 = 0xFF49;
     private int DMA_REQUEST = 0xFF46;
+    private long lastFrame = 0;
+    private int n = 1;
 
     public int mode = 2;
     private int modeClock;
@@ -70,8 +73,7 @@ public class GPU {
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
     }
 
-    public void update(int cycles) {
-        boolean reqInt = false;
+    public void update (int cycles) throws InterruptedException {
 
         int actual_LCD_STAT = mmu.getByte(LCD_STAT);
 
@@ -86,25 +88,29 @@ public class GPU {
             mmu.io[LCD_STAT-0xff00]= actual_LCD_STAT;
             return;
         }
-
         int scanline = mmu.getByte(LY);
 
         switch (mode) {
 
             case 0: //HBLANK
-                if(modeClock >= 204) {
-                    renderFrame();
+                if(modeClock >= 204*n) {
+                    modeClock%=204;
+                    scanline++;
                     if(scanline == 143) {
                         mode = 1;
                         ic.requestInterrupt(0);
                         actual_LCD_STAT = Bits.setBit(actual_LCD_STAT, true, 0);
                         actual_LCD_STAT = Bits.setBit(actual_LCD_STAT, false, 1);
+                        if(System.currentTimeMillis()-lastFrame < 16.67) {
+                            //Thread.sleep((long)16.67-(System.currentTimeMillis()-lastFrame));
+                        }
+                        renderFrame();
+                        lastFrame = System.currentTimeMillis();
                     } else {
                         mode = 2;
                         actual_LCD_STAT = Bits.setBit(actual_LCD_STAT, true, 1);
                         actual_LCD_STAT = Bits.setBit(actual_LCD_STAT, false, 0);
                     }
-                    modeClock=0;
                     mmu.io[LY-0xff00] = mmu.io[LY-0xff00]+1;
                     if(scanline == mmu.getByte(LYC)) {
                         actual_LCD_STAT = Bits.setBit(actual_LCD_STAT, true, 2);
@@ -117,12 +123,11 @@ public class GPU {
                 }
                break;
             case 1:	//Vertical blank mode
-                //CPU can access both the display RAM (8000h-9FFFh) and OAM (FE00h-FE9Fh)
-                if (modeClock >= 4560) {					//required clock cycles for full H-blank cycle (used for invisible scanlines)
-                    modeClock = 0;							//reset the clock
+                if (modeClock >= 456*n) {					//required clock cycles for full H-blank cycle (used for invisible scanlines)
+                    modeClock %= 456;							//reset the clock
                     // increment line number
-                    mmu.io[LY-0xff00] = mmu.io[LY-0xff00]+1;
-                    if (scanline > 153) { 			//reached full frame (including invisible lines)
+                        mmu.io[LY-0xff00] = mmu.io[LY-0xff00]+1;
+                        if ( mmu.io[LY-0xff00] > 153) { 			//reached full frame (including invisible lines)
                         mmu.io[LY-0xff00] = 0;		//reset scan line number
                         mode = 2;						//set mode as access OAM mode
                         actual_LCD_STAT = Bits.setBit(actual_LCD_STAT, true, 1);
@@ -132,24 +137,21 @@ public class GPU {
                 break;
 
             case 2: //Scanline (accessing OAM)
-                //CPU <cannot> access OAM memory (FE00h-FE9Fh) during this period
-                if (modeClock >= 80) {					//required clock cycles for accessing the OAM
+                if (modeClock >= 80*n) {					//required clock cycles for accessing the OAM
                     mode = 3;						//set mode as access VRAM mode
                     actual_LCD_STAT = Bits.setBit(actual_LCD_STAT, true, 1);
                     actual_LCD_STAT = Bits.setBit(actual_LCD_STAT, true, 0);
-                    modeClock =0;			//reset the clock
+                    modeClock%=80;			//reset the clock
                 }
                 break;
 
             case 3: //Scanline (accessing VRAM & OAM)
-                //CPU <cannot> access OAM and VRAM during this period. CGB Mode: Cannot access Palette Data (FF69,FF6B) either.
-
-                if (modeClock >= 289) {				//required clock cycles for accessing VRAM & OAM
+                if (modeClock >= 172*n) {				//required clock cycles for accessing VRAM & OAM
                     mode = 0;						//set mode as H-blank
                     actual_LCD_STAT = Bits.setBit(actual_LCD_STAT, false, 1);
                     actual_LCD_STAT = Bits.setBit(actual_LCD_STAT, false, 0);
                     if(Bits.isBit(actual_LCD_STAT, 3)) ic.requestInterrupt(1);
-                    modeClock = 0;
+                    modeClock%=172;
                     renderScan();
                 }
                 break;
@@ -187,7 +189,7 @@ public class GPU {
 
                 boolean longObjectMode = Bits.isBit(mmu.getByte(LCDC), 2);
 
-                boolean bg_prio = Bits.isBit(flags, 7);  // not yet implemented
+                boolean bg_prio = Bits.isBit(flags, 7);
 
                 int palette = Bits.isBit(flags, 4) ? 1 : 0;
                 boolean yflip = Bits.isBit(flags, 6);
@@ -211,7 +213,14 @@ public class GPU {
                 int byte1 = mmu.getByte(tileAddress);
                 int byte2 = mmu.getByte(tileAddress+1);
 
+
                 for (int pixel = 7; pixel >=0; pixel--) {  //
+                    if ((scanline<0)||(scanline>143)||(xpos+(7-pixel)<0)||(xpos+(7-pixel)>159))
+                    {
+                        continue ;
+                    }
+                    if(bg_prio && tileSet[xpos+(7-pixel)][scanline] != Color.WHITE.getRGB()) continue;
+
                     int colourBit = pixel;
 
                     if(xflip) {
@@ -220,17 +229,15 @@ public class GPU {
                     }
 
                     int colourNum = Bits.isBit(byte2, colourBit) ? 1 : 0;
+
                     colourNum <<= 1;
+
                     colourNum |= (Bits.isBit(byte1, colourBit) ? 1 : 0);
 
-                    if(colourNum == 0) continue;
+                    if(colourNum == 0) continue;   //Sprites should ignore color 0
 
                     Color col = getSpriteColour(colourNum, palette);
 
-                    if ((scanline<0)||(scanline>143)||(xpos+(7-pixel)<0)||(xpos+(7-pixel)>159))
-                    {
-                        continue ;
-                    }
                     tileSet[xpos+(7-pixel)][scanline] = col.getRGB();
                 }
             }
@@ -248,7 +255,6 @@ public class GPU {
         int tileData;
         int tileMemAddr;
         int tileAddr;
-        int tileDataAddr;
         int yPos = 0;
         int xPos;
         int tileCol;
@@ -333,6 +339,7 @@ public class GPU {
 
             Color col = getColour(colourNum);
 
+
             tileSet[pixel][scanLine] = col.getRGB();
 
 			/* Every two bits in the palette data byte represent a colour.
@@ -380,10 +387,8 @@ public class GPU {
 
     private Color getSpriteColour(int colourID, int which) {
         int colNum = 0;
-        Color returnCol = Color.BLACK;
-        int add = 0xff48;
-        if(which == 1) add = 0xff49;
-        int palette = mmu.getByte(add);
+        Color returnCol = null;
+        int palette = mmu.getByte(0xFF48 + which);
 
         switch(colourID){
             case 1: colNum = (palette & 0xC) >>> 2;		break;
@@ -392,6 +397,7 @@ public class GPU {
         }
 
         switch(colNum){
+            case 0: returnCol = Color.WHITE; 		break;
             case 1: returnCol = Color.LIGHT_GRAY;  	break;
             case 2: returnCol = Color.DARK_GRAY;  	break;
             case 3: returnCol = Color.BLACK; 		break;

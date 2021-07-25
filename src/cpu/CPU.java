@@ -15,6 +15,8 @@ public class CPU {
 	private Timer timer;
 	private State state;
 	private GPU gpu;
+	private long start;
+	private int counter;
 
 	public static int a = 0;
 
@@ -80,7 +82,7 @@ public class CPU {
 		mmu.writeByte(0xFFFF, 0x00); // I
 	}
 
-	public void run() {
+	public void run() throws InterruptedException {
 		while(true) {
 			if(ic.getIME() & ic.delayCheck()) {
 				cycles +=interruptsHandler();
@@ -88,9 +90,9 @@ public class CPU {
 			int current_op = mmu.getByte(regc.getRegval("PC"));
 			regc.incrPC();
 			int cycles_passed = insc.execInstr(current_op, regc);
+			if(cycles_passed<0) cycles_passed=0;
 			cycles+=cycles_passed;
-			timer.tick(cycles_passed*2);
-			if(current_op == 0x27) System.out.println("ola");
+			timer.tick(cycles_passed);
 		//	mmu.DMA_count(cycles_passed);
 			gpu.update(cycles_passed);
 		}
@@ -127,7 +129,7 @@ public class CPU {
 		return 0;
 	}
 
-	public static void main(String[] args) throws IOException {
+	public static void main(String[] args) throws IOException, InterruptedException {
 		CPU cpu = new CPU();
 		cpu.reset();
 		cpu.run();
