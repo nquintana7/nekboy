@@ -101,8 +101,8 @@ public class GPU {
                         ic.requestInterrupt(0);
                         actual_LCD_STAT = Bits.setBit(actual_LCD_STAT, true, 0);
                         actual_LCD_STAT = Bits.setBit(actual_LCD_STAT, false, 1);
-                        if(System.currentTimeMillis()-lastFrame < 16.67) {
-                            //Thread.sleep((long)16.67-(System.currentTimeMillis()-lastFrame));
+                        if(System.currentTimeMillis()-lastFrame < 10.66) {
+                            Thread.sleep((long)10.67-(System.currentTimeMillis()-lastFrame));
                         }
                         renderFrame();
                         lastFrame = System.currentTimeMillis();

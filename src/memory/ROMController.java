@@ -1,8 +1,6 @@
 package memory;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
+import java.io.*;
 
 public class ROMController {
     private int[] boot_rom;
@@ -19,12 +17,20 @@ public class ROMController {
     private boolean left_boot;
     private MBC_status mbc;
     private int RTC;
+    public static boolean flag;
 
     private enum MBC_status {
         NO_BANK,
         MBC1,
         MBC3
     };
+
+    public ROMController () throws IOException {
+        loadROM();
+        if(ex_ram) {
+            restoreSave();
+        }
+    }
 
     public int getByte(int addr) {
         if (addr <= 0x3fff) {
@@ -46,6 +52,50 @@ public class ROMController {
     }
 
     public void disable_bootrom () { left_boot = true; }
+
+    private void save() {
+        FileWriter out = null;
+        File save = new File("file.sav");
+        try  {
+            out = new FileWriter(save);
+            //The two-dimensional array is stored in the file line by line
+            for (int i = 0; i < eram.length; i++) {
+                for (int j = 0; j < eram[i].length; j++) {
+                    //Convert each element to a string
+                    String content = String.valueOf(eram[i][j]) + "";
+                    out.write(content + "\t");
+                }
+                out.write("\r\n");
+            }
+            out.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void restoreSave() {
+        BufferedReader bufferedReader = null;
+        //Allocate space for the saved array
+        try {
+            InputStreamReader inputStreamReader = new InputStreamReader(new FileInputStream(new File("file.sav")));
+            bufferedReader = new BufferedReader(inputStreamReader);
+            String line = null;
+            int i=0;
+            //Read by line
+            while((line = bufferedReader.readLine() )!= null){
+                    //Split the string read by line by spaces to get a string array
+                    String[] strings = line.split("\\t");
+                    //Sequentially converted to int type and stored in the allocated array
+                    for(int k = 0;k<strings.length;k++){
+                        eram[i][k] = 0xff&Integer.parseInt(strings[k]);
+                    }
+                    //The number of rows plus 1
+                    i++;
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
 
     public void writeByte(int addr, int value) {
         addr = addr&0xffff;
@@ -69,6 +119,9 @@ public class ROMController {
                         enabled_eram = true;
                         enabled_timer = false;
                         actual_ram = value;
+                        if(flag) {
+                            save();
+                        }
                     } else if(value >= 0x8 && value <= 0xc) {
                         enabled_eram = false;
                         enabled_timer = true;

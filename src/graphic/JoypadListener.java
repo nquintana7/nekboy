@@ -2,6 +2,7 @@ package graphic;
 
 import cpu.Bits;
 import cpu.InterruptsController;
+import memory.ROMController;
 
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
@@ -21,6 +22,10 @@ public class JoypadListener implements KeyListener {
     @Override
     public void keyPressed(KeyEvent e) {
         switch (e.getKeyCode()) {
+            case(KeyEvent.VK_1): {
+                ROMController.flag = !ROMController.flag;
+                break;
+            }
             case(KeyEvent.VK_X): {
                 joy.writePad_State(1, false, 0);
                 //    joy.ic.requestInterrupt(4);

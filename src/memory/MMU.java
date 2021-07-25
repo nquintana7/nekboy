@@ -36,7 +36,6 @@ public class MMU {
 		pad_state = 0xff;
 		joy = j;
 		this.romcon = romm;
-		romcon.loadROM();
 	}
 	
 	public int getByte (int addr) {

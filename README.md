@@ -3,9 +3,14 @@ This is a in development Gameboy (DMG-01) Emulator written in Java, during my fr
 
 ## Status
 * Runs Pokemon Red. I haven't played much but so far looks good. 
-* Partially implemented MBC1, MBC3 and external ram in order to play Pokemon Red. No other MBC Implementation yet. Saves are yet not implemented.
+* Partially implemented MBC1, MBC3 and external ram in order to play Pokemon Red. No other MBC Implementation yet. Saves are also implemented.
 * Passes almost all CPU Instructions Blarggs test.
 * Timer and Interrupts are yet not correctly implemented (probably).
+
+## Next steps
+* Reorganize code and implement everything efficiently. 
+* Implement correctly Timer and Interrupts, Sound
+* Add Gameboy Color support
 
 ## Screenshots
 ![Pokemon Red](imgs/pic2.png)
