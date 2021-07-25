@@ -8,7 +8,6 @@ This is a in development Gameboy (DMG-01) Emulator written in Java, during my fr
 * Timer and Interrupts are yet not correctly implemented (probably).
 
 ## Screenshots
-![Tetris](imgs/pic1.png)
 ![Pokemon Red](imgs/pic2.png)
 
 ## Resources
