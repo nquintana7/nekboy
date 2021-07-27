@@ -1,16 +1,17 @@
 package cpu;
 
+import controller.Joypad;
 import graphic.*;
 import memory.*;
-import java.io.FileNotFoundException;
+
 import java.io.IOException;
 
 public class CPU {
 
-	private InterruptsController ic;
-	private RegistersController regc;
+	private InterruptsManager ic;
+	private RegistersManager regc;
 	private MMU mmu;
-	private OpController insc;
+	private OpManager insc;
 	private int cycles;
 	private Timer timer;
 	private State state;
@@ -21,13 +22,13 @@ public class CPU {
 	public static int a = 0;
 
 	public CPU() throws IOException {
-		ic = new InterruptsController();
+		ic = new InterruptsManager();
 		timer = new Timer(ic);
 		Joypad j = new Joypad(ic);
 		mmu = new MMU(ic, timer, j, new ROMController());
 	//	gpu = new GPU(mmu, inc);
-		regc = new RegistersController(mmu);
-		insc = new OpController(mmu, ic);
+		regc = new RegistersManager(mmu);
+		insc = new OpManager(mmu, ic);
 		gpu = new GPU(mmu, ic, j);
 	}
 

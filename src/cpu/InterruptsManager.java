@@ -1,6 +1,6 @@
 package cpu;
 
-public class InterruptsController {
+public class InterruptsManager {
     public boolean IME;
     public int IF;
     public int IE;

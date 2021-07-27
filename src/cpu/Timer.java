@@ -5,12 +5,12 @@ public class Timer {
     public int TIMA = 0;
     public int TMA = 0;
     public int TAC = 0;
-    public InterruptsController ic;
+    public InterruptsManager ic;
     public int divcounter;
     public int timacounter;
 
 
-    public Timer(InterruptsController c) {
+    public Timer(InterruptsManager c) {
         this.ic = c;
     }
 

@@ -1,4 +1,4 @@
-package graphic;
+package controller;
 
 import cpu.*;
 
@@ -6,9 +6,9 @@ public class Joypad {
     private int reg;
     private int[] pad_state = {0xf, 0xf}; // [0] directional buttons - [1] action buttons
 
-    public InterruptsController ic;
+    public InterruptsManager ic;
 
-    public Joypad (InterruptsController icc) {
+    public Joypad (InterruptsManager icc) {
         this.ic = icc;
         reg = 0xff;
     }

@@ -5,6 +5,8 @@ package graphic;
 import javax.swing.JFrame;
 import java.awt.Color;
 
+import controller.Joypad;
+import controller.JoypadListener;
 import memory.*;
 import cpu.*;
 
@@ -19,7 +21,9 @@ public class GPU {
         3  Black*/
 
     public MMU mmu;
-    public int LCDC = 0xff40;
+   public int LCDC = 0xff40;
+   // private int LCDC;
+   // private int LCD_STATE;
     /* Bit 7 - LCD Display Enable (0=Off, 1=On)
 	Bit 6 - Window Tile Map Display Select (0=9800-9BFF, 1=9C00-9FFF)
 	Bit 5 - Window Display Enable (0=Off, 1=On)
@@ -43,6 +47,7 @@ public class GPU {
     private int SCX = 0xff43;
     private int LY = 0xff44;
     private int LYC = 0xff45;
+
     public static final int WY = 0xFF4A;
     public static final int WX = 0xFF4B; // true value is this - 7
     public static final int BGP = 0xFF47;
@@ -55,10 +60,10 @@ public class GPU {
     public int mode = 2;
     private int modeClock;
     public int tileSet[][] = new int[160][144];
-    public InterruptsController ic;
+    public InterruptsManager ic;
     private Screen screen;
 
-    public GPU(MMU mm, InterruptsController icc, Joypad j) {
+    public GPU(MMU mm, InterruptsManager icc, Joypad j) {
         mmu = mm;
         ic = icc;
         int width = 160;
@@ -96,15 +101,15 @@ public class GPU {
                 if(modeClock >= 204*n) {
                     modeClock%=204;
                     scanline++;
-                    if(scanline == 143) {
+                    if(scanline == 144) {
                         mode = 1;
                         ic.requestInterrupt(0);
                         actual_LCD_STAT = Bits.setBit(actual_LCD_STAT, true, 0);
                         actual_LCD_STAT = Bits.setBit(actual_LCD_STAT, false, 1);
-                        if(System.currentTimeMillis()-lastFrame < 10.66) {
-                            Thread.sleep((long)10.67-(System.currentTimeMillis()-lastFrame));
-                        }
                         renderFrame();
+                        if(System.currentTimeMillis()-lastFrame < 6.66) {
+                            Thread.sleep((long)6.67-(System.currentTimeMillis()-lastFrame));
+                        }
                         lastFrame = System.currentTimeMillis();
                     } else {
                         mode = 2;
@@ -352,18 +357,6 @@ public class GPU {
 
     }
 
-    public int getScanLine(){
-        return mmu.getByte(LY);
-    }
-
-    public void incScanLine(){
-        mmu.writeByte(LY, mmu.getByte(LY)+1);
-    }
-
-    public void resetScanLine(){
-        mmu.writeByte(LY, 0);
-    }
-
     private Color getColour(int colourID){
         int colNum = 0;
         Color returnCol = Color.BLACK;
@@ -405,16 +398,15 @@ public class GPU {
         return returnCol;
     }
 
-
-
-
     public boolean isLCDenabled() {
         return Bits.isBit(mmu.getByte(LCDC), 7);
     }
+
     public boolean isVramAccessible() {
         if(mode != 3) return true;
         return false;
     }
+
     public boolean isOamAccessible() {
         if(mode == 0 || mode == 1) {
             return true;

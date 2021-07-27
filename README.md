@@ -14,6 +14,7 @@ This is a in development Gameboy (DMG-01) Emulator written in Java, during my fr
 
 ## Screenshots
 ![Pokemon Red](imgs/pic2.png)
+![Pokemon Red](imgs/pic3.png)
 
 ## Resources
 I could not have made any progress without the amazing resources out there. This are some I used:

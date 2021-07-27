@@ -1,7 +1,6 @@
-package graphic;
+package controller;
 
-import cpu.Bits;
-import cpu.InterruptsController;
+import controller.Joypad;
 import memory.ROMController;
 
 import java.awt.event.KeyEvent;

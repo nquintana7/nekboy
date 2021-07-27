@@ -2,7 +2,7 @@ package cpu;
 
 import memory.*;
 
-public class RegistersController {
+public class RegistersManager {
 	private int z_position = 7;
 	private int n_position = 6;
 	private int h_position = 5;
@@ -28,7 +28,7 @@ public class RegistersController {
 		PC
 	};
 
-	public RegistersController (MMU mmu) {
+	public RegistersManager(MMU mmu) {
 		this.mmu = mmu;
 		this.a = 0x0;
 		this.b = 0x0;

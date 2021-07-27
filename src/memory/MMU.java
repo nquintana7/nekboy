@@ -1,10 +1,8 @@
 package memory;
 
+import controller.Joypad;
 import cpu.*;
-import graphic.*;
 
-import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
 
 
@@ -16,14 +14,14 @@ public class MMU {
 	private final int hram_offet = 0xFF80;
 	public final int[] wram, hram, vram, oam, io;
 	private Timer tm;
-	private InterruptsController ic;
+	private InterruptsManager ic;
 	private boolean DMA_intransfer;
 	private int DMA_counter;
 	public int pad_state;
 	public Joypad joy;
 	private ROMController romcon;
 
-	public MMU(InterruptsController ic, Timer tmeru, Joypad j, ROMController romm) throws IOException {
+	public MMU(InterruptsManager ic, Timer tmeru, Joypad j, ROMController romm) throws IOException {
 		left_boot = true;
 		oam = new int[160];
 		vram = new int[8192];
