@@ -2,6 +2,7 @@ package memory;
 
 import controller.Joypad;
 import cpu.*;
+import graphic.GPU;
 
 import java.io.IOException;
 
@@ -12,7 +13,7 @@ public class MMU {
 	private final int oam_offset = 0xFE00;
 	private final int wram_offet = 0xC000;
 	private final int hram_offet = 0xFF80;
-	public final int[] wram, hram, vram, oam, io;
+	private final int[] wram, hram, vram, oam, io;
 	private Timer tm;
 	private InterruptsManager ic;
 	private boolean DMA_intransfer;
@@ -21,7 +22,7 @@ public class MMU {
 	public Joypad joy;
 	private ROMController romcon;
 
-	public MMU(InterruptsManager ic, Timer tmeru, Joypad j, ROMController romm) throws IOException {
+	public MMU(InterruptsManager ic, Timer tmeru, Joypad j, ROMController romm) {
 		left_boot = true;
 		oam = new int[160];
 		vram = new int[8192];
@@ -30,12 +31,14 @@ public class MMU {
 		io = new int[128];
 		this.ic = ic;
 		tm = tmeru;
-		DMA_intransfer = false;
-		pad_state = 0xff;
+		//DMA_intransfer = false;
 		joy = j;
 		this.romcon = romm;
 	}
-	
+
+	public MMU(GPU gpu, InterruptsManager ic, Timer timer, ROMController romm) {
+	}
+
 	public int getByte (int addr) {
 		addr = addr&0xffff;
 		if(addr<=0x7fff) {

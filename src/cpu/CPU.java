@@ -23,13 +23,12 @@ public class CPU {
 
 	public CPU() throws IOException {
 		ic = new InterruptsManager();
+		gpu = new GPU(ic);
 		timer = new Timer(ic);
-		Joypad j = new Joypad(ic);
-		mmu = new MMU(ic, timer, j, new ROMController());
+		mmu = new MMU(gpu, ic, timer, new ROMController());
 	//	gpu = new GPU(mmu, inc);
 		regc = new RegistersManager(mmu);
 		insc = new OpManager(mmu, ic);
-		gpu = new GPU(mmu, ic, j);
 	}
 
 	public enum State{

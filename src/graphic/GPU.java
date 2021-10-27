@@ -19,11 +19,7 @@ public class GPU {
         1  Light gray
         2  Dark gray
         3  Black*/
-
-    public MMU mmu;
-   public int LCDC = 0xff40;
-   // private int LCDC;
-   // private int LCD_STATE;
+    private int LCDC; // 0xFF40
     /* Bit 7 - LCD Display Enable (0=Off, 1=On)
 	Bit 6 - Window Tile Map Display Select (0=9800-9BFF, 1=9C00-9FFF)
 	Bit 5 - Window Display Enable (0=Off, 1=On)
@@ -32,7 +28,7 @@ public class GPU {
 	Bit 2 - OBJ (Sprite) Size (0=8x8, 1=8x16)
 	Bit 1 - OBJ (Sprite) Display Enable (0=Off, 1=On)
 	Bit 0 - BG Display (for CGB see below) (0=Off, 1=On) */
-    public int LCD_STAT = 0xff41;
+    private int LCD_STAT; // 0xFF41
     /*
 	Bits 0&1: 	00: H-Blank
 				01: V-Blank
@@ -43,28 +39,34 @@ public class GPU {
 	Bit 4: Mode 1 Interupt Enabled
 	Bit 5: Mode 2 Interupt Enabled
 	Bit 6: Coincidence Interupt Enabled */
-    private int SCY = 0xff42;
-    private int SCX = 0xff43;
-    private int LY = 0xff44;
-    private int LYC = 0xff45;
-
-    public static final int WY = 0xFF4A;
-    public static final int WX = 0xFF4B; // true value is this - 7
-    public static final int BGP = 0xFF47;
-    public static final int OBP0 = 0xFF48;
-    public static final int OBP1 = 0xFF49;
+    private int SCY; // 0xFF42
+    private int SCX; // 0xFF43
+    private int LY; // 0xFF44
+    private int LYC; // 0xFF45
+    private int WY; // 0xFF4A
+    private int WX; // 0xFF4B, true value is this - 7
+    private int BGP; // 0xFF47
+    private int OBP0; // 0xFF48
+    private int OBP1; // 0xFF49
     private int DMA_REQUEST = 0xFF46;
-    private long lastFrame = 0;
-    private int n = 1;
 
-    public int mode = 2;
+    private int vram[] = new int[8192];
+
+    private int mode = 2;
     private int modeClock;
+
     public int tileSet[][] = new int[160][144];
-    public InterruptsManager ic;
+    private InterruptsManager ic;
     private Screen screen;
 
+    private enum Mode{
+        HBlank,
+        VBlank,
+        OAM,
+        VRam
+    };
+
     public GPU(MMU mm, InterruptsManager icc, Joypad j) {
-        mmu = mm;
         ic = icc;
         int width = 160;
         int height = 144;
@@ -79,7 +81,6 @@ public class GPU {
     }
 
     public void update (int cycles) throws InterruptedException {
-
         int actual_LCD_STAT = mmu.getByte(LCD_STAT);
 
         if (isLCDenabled()) {
