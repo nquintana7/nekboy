@@ -18,6 +18,7 @@ public class ROMController {
     private MBC_status mbc;
     private int RTC;
     public static boolean flag;
+    private static String filename;
 
     private enum MBC_status {
         NO_BANK,
@@ -25,7 +26,8 @@ public class ROMController {
         MBC3
     };
 
-    public ROMController () throws IOException {
+    public ROMController (String file) throws IOException {
+        filename = file;
         loadROM();
         if(ex_ram) {
             restoreSave();
@@ -55,7 +57,7 @@ public class ROMController {
 
     private void save() {
         FileWriter out = null;
-        File save = new File("file.sav");
+        File save = new File(filename.replace(".gb", ".sav"));
         try  {
             out = new FileWriter(save);
             //The two-dimensional array is stored in the file line by line
@@ -77,7 +79,7 @@ public class ROMController {
         BufferedReader bufferedReader = null;
         //Allocate space for the saved array
         try {
-            InputStreamReader inputStreamReader = new InputStreamReader(new FileInputStream(new File("file.sav")));
+            InputStreamReader inputStreamReader = new InputStreamReader(new FileInputStream(new File(filename.replace(".gb", ".sav"))));
             bufferedReader = new BufferedReader(inputStreamReader);
             String line = null;
             int i=0;
@@ -134,7 +136,7 @@ public class ROMController {
     }
 
     public void loadROM() throws IOException{
-        File file = new File("pokemonred.gb");
+        File file = new File(filename);
         byte[] bytes = new byte[(int) file.length()];
         rom_0 = new int[16384];
         FileInputStream fis = new FileInputStream(file);

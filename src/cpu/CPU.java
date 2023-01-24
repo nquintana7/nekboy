@@ -21,11 +21,11 @@ public class CPU {
 
 	public static int a = 0;
 
-	public CPU() throws IOException {
+	public CPU(String filename) throws IOException {
 		ic = new InterruptsManager();
 		timer = new Timer(ic);
 		Joypad j = new Joypad(ic);
-		mmu = new MMU(ic, timer, j, new ROMController());
+		mmu = new MMU(ic, timer, j, new ROMController(filename));
 	//	gpu = new GPU(mmu, inc);
 		regc = new RegistersManager(mmu);
 		insc = new OpManager(mmu, ic);
@@ -130,10 +130,6 @@ public class CPU {
 		return 0;
 	}
 
-	public static void main(String[] args) throws IOException, InterruptedException {
-		CPU cpu = new CPU();
-		cpu.reset();
-		cpu.run();
-	}
+	
 
 }
